@@ -1,0 +1,4 @@
+kafka_admins:
+  - admin
+  - system:serviceaccount:ccfd:opendatahub-operator
+  - opentlc-mgr
