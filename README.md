@@ -148,6 +148,12 @@ If the Seldon server requires an authentication token, this can be passed to the
 -e SELDON_TOKEN=<SELDON_TOKEN>
 ```
 
+By default, the KIE server will request a prediction to the endpoint `<SELDON_URL>/predict`. If however, your Seldon deployment uses another prediction endpoint, you can specify it by adding the `SELDON_ENDPOINT` enviroment variable above, for instance:
+
+```shell
+-e SELDON_ENDPOINT=api/v0.1/predictions
+```
+
 If you want to interact with the KIE server's REST interface from outside OpenShift, you can expose its service with
 
 ```shell
