@@ -197,6 +197,12 @@ Also optionally, a Seldon token can be provided:
 -e SELDON_TOKEN=<SELDON_TOKEN>
 ```
 
+By default, the router will request a prediction to the endpoint `<SELDON_URL>/predict`. If however, your Seldon deployment uses another prediction endpoint, you can specify it by adding the `SELDON_ENDPOINT` enviroment variable above, for instance:
+
+```shell
+-e SELDON_ENDPOINT=api/v0.1/predictions
+```
+
 #### Kafka producer
 
 To start the Kafka producer (which simulates the transaction events) run:
