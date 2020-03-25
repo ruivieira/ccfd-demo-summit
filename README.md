@@ -2,10 +2,10 @@
 
 ![diagram](docs/diagram.png)
 
-# Contents
+## Contents
 
 - [CCFD demo](#ccfd-demo)
-- [Contents](#contents)
+  - [Contents](#contents)
   - [Setup](#setup)
     - [Running on OpenShift](#running-on-openshift)
       - [OpenDataHub](#opendatahub)
@@ -13,6 +13,7 @@
       - [Seldon](#seldon)
       - [Kie server](#kie-server)
         - [Execution server](#execution-server)
+          - [Execution server optional configuration](#execution-server-optional-configuration)
       - [Notification service](#notification-service)
       - [Camel router](#camel-router)
       - [Kafka producer](#kafka-producer)
@@ -95,6 +96,7 @@ kafka_cluster_name: odh-message-bus
 kafka_broker_replicas: 3
 kafka_zookeeper_replicas: 3
 ```
+
 Kafka installation requires special setup, the following steps are to configure Kafka. Add your username to the `kafka_admins` list,
 by editing `deploy/kafka/vars/vars.yaml`:
 
@@ -142,6 +144,8 @@ $ oc new-app ruivieira/ccd-service:1.0-SNAPSHOT \
     -e BROKER_URL=odh-message-bus-kafka-brokers:9092
 ```
 
+###### Execution server optional configuration
+
 If the Seldon server requires an authentication token, this can be passed to the KIE server by adding the following environment variable:
 
 ```shell
@@ -152,6 +156,21 @@ By default, the KIE server will request a prediction to the endpoint `<SELDON_UR
 
 ```shell
 -e SELDON_ENDPOINT=api/v0.1/predictions
+```
+
+The HTTP connection parameters can also be configured, namely the _connection pool size_ and the connections _timeout_. The timeout value provided is treated as milliseconds. For instance:
+
+```shell
+-e SELDON_TIMEOUT=5000 \ # five second timeout
+-e SELDON_POOL_SIZE=5    # allows for 5 simulataneous HTTP connections
+```
+
+The prediction service's _confidence threshold_, above which a prediction automatically assigns an output and
+closes the user task can be also provided. It is assumed to be a probability value between `0.0` and `1.0`.
+If not provided, the default value is `1.0`. To specify it use:
+
+```shell
+-e CONFIDENCE_THRESHOLD=0.5 # as an example
 ```
 
 If you want to interact with the KIE server's REST interface from outside OpenShift, you can expose its service with
