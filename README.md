@@ -11,7 +11,9 @@
       - [OpenDataHub](#opendatahub)
       - [Kafka](#kafka)
       - [Rook / Ceph](#rook--ceph)
+      - [Route](#route)
       - [Fraud detection model](#fraud-detection-model)
+- [Upload data to Rook-Ceph](#upload-data-to-rook-ceph)
       - [Kie server](#kie-server)
         - [Execution server](#execution-server)
           - [Execution server optional configuration](#execution-server-optional-configuration)
@@ -248,6 +250,8 @@ available in this repo in `deploy/ceph/s3-secretceph.yml`.
 $ oc create -n ccfd -f deploy/ceph/s3-secretceph.yaml
 ```
 
+#### Route
+
 From the Openshift console, create a route to the rook service, `rook-ceph-rgw-my-store`, in the `rook-ceph` namespace to expose the endpoint. This endpoint url will be used to access the S3 interface from the example notebooks.
 
 ```shell
@@ -284,6 +288,48 @@ metadata:
 annotations:
 prometheus.io/path: /prometheus
 prometheus.io/scrape: 'true'
+```
+
+# Upload data to Rook-Ceph
+
+Make sure to decode the key and secret copied from the rook installation by using the following commands:
+
+```shell
+$ base64 -d
+<Paste secret>
+[Ctrl-D]
+```
+
+From a command line use the `aws` tool to upload the file to `rook-ceph` data store:
+
+```shell
+$ aws configure
+```
+
+Only enter key and secret, leave all other fields as default. Check if connection is working using the route
+[created previously](#route):
+
+```shell
+$ aws s3 ls --endpoint-url <ROOK_CEPH_URL>
+```
+
+Create a bucket and upload the file:
+
+```shell
+$ aws s3api create-bucket --bucket ccdata --endpoint-url <ROOK_CEPH_URL>
+```
+
+Download the credit card transaction `creditcard.csv` file (available [here](https://gitlab.com/opendatahub/fraud-detection-tutorial/-/raw/master/data/creditcard.csv)) and upload it using:
+
+```shell
+$ wget -O creditcard.csv https://gitlab.com/opendatahub/fraud-detection-tutorial/-/raw/master/data/creditcard.csv
+$ aws s3 cp creditcard.csv s3://ccdata/OPEN/uploaded/creditcard.csv --endpoint-url <ROOK_CEPH_URL> --acl public-read-write
+```
+
+You can verify the file is uploaded using:
+
+```shell
+$ aws s3 ls s3://ccdata/OPEN/uploaded/ --endpoint-url <ROOK_CEPH_URL>
 ```
 
 #### Kie server
