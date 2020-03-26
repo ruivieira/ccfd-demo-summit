@@ -10,7 +10,8 @@
     - [Running on OpenShift](#running-on-openshift)
       - [OpenDataHub](#opendatahub)
       - [Kafka](#kafka)
-      - [Seldon](#seldon)
+      - [Rook / Ceph](#rook--ceph)
+      - [Fraud detection model](#fraud-detection-model)
       - [Kie server](#kie-server)
         - [Execution server](#execution-server)
           - [Execution server optional configuration](#execution-server-optional-configuration)
@@ -121,13 +122,168 @@ Deploy the ODH custom resource based on the sample template
 $ oc create -f frauddetection_cr.yaml
 ```
 
-#### Seldon
+#### Rook / Ceph
 
-To deploy the test Seldon model server, deploy the already built Docker image with
+This installation of Rook-Ceph assumes your OCP 3.11/4.x cluster has at least 3 worker nodes.
+Download the files for Rook Ceph v0.9.3 and modify the source Rook Ceph files directly, clone the Rook operator and checkout the v0.9.3 branch.  For convenience we also included the modified files.
 
 ```shell
-$ oc new-app ruivieira/ccfd-seldon-model
-$ oc expose svc/ccfd-seldon-model
+$ git clone https://github.com/rook/rook.git
+$ cd rook
+$ git checkout -b rook-0.9.3 v0.9.3
+$ cd cluster/examples/kubernetes/ceph/
+```
+
+Edit `operator.yaml` and set the environment variables for `FLEXVOLUME_DIR_PATH` and `ROOK_HOSTPATH_REQUIRES_PRIVILEGED` to allow the Rook operator to use OpenShift hostpath storage.
+
+```yaml
+name: FLEXVOLUME_DIR_PATH
+value: "/etc/kubernetes/kubelet-plugins/volume/exec"
+name: ROOK_HOSTPATH_REQUIRES_PRIVILEGED
+value: "true"
+```
+
+The following steps require cluster wide permissions. Configure the necessary security contexts , and deploy the rook operator, this will create a new namespace, `rook-ceph-system`, and deploy the pods in it.
+
+```shell
+$ oc create -f scc.yaml         # configure security context
+$ oc create -f operator.yaml    # deploy operator
+```
+
+You can verify deployment is ongoing with:
+
+```shell
+$ oc get pods -n rook-ceph-system
+NAME READY STATUS RESTARTS AGE
+rook-ceph-agent-j4zms 1/1 Running 0 33m
+rook-ceph-agent-qghgc 1/1 Running 0 33m
+rook-ceph-agent-tjzv6 1/1 Running 0 33m
+rook-ceph-operator-567f8cbb6-f5rsj 1/1 Running 0 33m
+rook-discover-gghsw 1/1 Running 0 33m
+rook-discover-jd226 1/1 Running 0 33m
+rook-discover-lgfrx 1/1 Running 0 33m
+```
+
+Once the operator is ready, you can create a Ceph cluster, and a Ceph object service.
+The toolbox service is also handy to deploy for checking the health of the Ceph cluster.
+This step takes a couple of minutes, please be patient.
+
+```shell
+$ oc create -f cluster.yaml
+```
+
+Check the pods and wait for this pods to finish before proceeding.
+
+```shell
+$ oc get pods -n rook-ceph
+rook-ceph-mgr-a-66db78887f-5pt7l              1/1     Running     0          108s
+rook-ceph-mon-a-69c8b55966-mtb47              1/1     Running     0          3m19s
+rook-ceph-mon-b-59699948-4zszh                1/1     Running     0          2m44s
+rook-ceph-mon-c-58f4744f76-r8prn              1/1     Running     0          2m11s
+rook-ceph-osd-0-764bbd9694-nxjpz              1/1     Running     0          75s
+rook-ceph-osd-1-85c8df76d7-5bdr7              1/1     Running     0          74s
+rook-ceph-osd-2-8564b87d6c-lcjx2              1/1     Running     0          74s
+rook-ceph-osd-prepare-ip-10-0-136-154-mzf66   0/2     Completed   0          87s
+rook-ceph-osd-prepare-ip-10-0-153-32-prf94    0/2     Completed   0          87s
+rook-ceph-osd-prepare-ip-10-0-175-183-xt4jm   0/2     Completed   0          87s
+```
+
+Edit `object.yaml` and replace port `80` with `8080`:
+
+```yaml
+gateway:
+# type of the gateway (s3)
+type: s3
+# A reference to the secret in the rook namespace where the ssl certificate is stored
+sslCertificateRef:
+# The port that RGW pods will listen on (http)
+port: 8080
+```
+
+And then run:
+
+```shell
+$ oc create -f toolbox.yaml
+$ oc create -f object.yaml
+```
+
+You can check the deployment progress, as previously, with:
+
+```shell
+$ oc get pods -n rook-ceph
+rook-ceph-mgr-a-5b6fcf7c6-cx676 1/1 Running 0 6m56s
+rook-ceph-mon-a-54d9bc6c97-kvfv6 1/1 Running 0 8m38s
+rook-ceph-mon-b-74699bf79f-2xlzz 1/1 Running 0 8m22s
+rook-ceph-mon-c-5c54856487-769fx 1/1 Running 0 7m47s
+rook-ceph-osd-0-7f4c45fbcd-7g8hr 1/1 Running 0 6m16s
+rook-ceph-osd-1-55855bf495-dlfpf 1/1 Running 0 6m15s
+rook-ceph-osd-2-776c77657c-sgf5n 1/1 Running 0 6m12s
+rook-ceph-osd-3-97548cc45-4xm4q 1/1 Running 0 5m58s
+rook-ceph-osd-prepare-ip-10-0-138-84-gc26q 0/2 Completed 0 6m29s
+rook-ceph-osd-prepare-ip-10-0-141-184-9bmdt 0/2 Completed 0 6m29s
+rook-ceph-osd-prepare-ip-10-0-149-16-nh4tm 0/2 Completed 0 6m29s
+rook-ceph-osd-prepare-ip-10-0-173-174-mzzhq 0/2 Completed 0 6m28s
+rook-ceph-rgw-my-store-d6946dcf-q8k69 1/1 Running 0 5m33s
+rook-ceph-tools-cb5655595-4g4b2 1/1 Running 0 8m46s
+```
+
+Next, you will need to create a set of S3 credentials, the resulting credentials will be stored in a secret file under the rook-ceph namespace.
+There isn’t currently a way to cross-share secrets between OpenShift namespaces, so you will need to copy the secret to the namespace running Open Data Hub operator. To do so, run:
+
+```shell
+$ oc create -f object-user.yaml
+```
+
+Next we are going to retrieve the secrets using
+
+```shell
+$ oc get secrets -n rook-ceph rook-ceph-object-user-my-store-my-user -o json
+```
+
+Create a secret in your deployment namespace that includes the secret and key for S3 interface. 
+Make sure to copy the accesskey and secretkey from the command output above and download the secret yaml file
+available in this repo in `deploy/ceph/s3-secretceph.yml`.
+
+```shell
+$ oc create -n ccfd -f deploy/ceph/s3-secretceph.yaml
+```
+
+From the Openshift console, create a route to the rook service, `rook-ceph-rgw-my-store`, in the `rook-ceph` namespace to expose the endpoint. This endpoint url will be used to access the S3 interface from the example notebooks.
+
+```shell
+$ oc expose -n rook-ceph svc/rook-ceph-rgw-my-store
+```
+
+#### Fraud detection model
+
+Deploy fraud detection fully trained model by using `deploy/model/modelfull.json` in this repository:
+
+```shell
+$ oc create -n ccfd -f deploy/model/modelfull.json
+```
+
+Check and make sure the model is created, this step will take a couple of minutes.
+
+```shell
+$ oc get seldondeployments
+$ oc get pods
+```
+
+Create a route to the model by using `deploy/model/modelfull-route.yaml` in this repo:
+
+```shell
+$ oc create -n ccfd -f deploy/model/modelfull-route.yaml
+```
+
+Enable Prometheus metric scraping by editing `modelfull-modelfull` service from the portal and adding these two lines under annotations:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+annotations:
+prometheus.io/path: /prometheus
+prometheus.io/scrape: 'true'
 ```
 
 #### Kie server
