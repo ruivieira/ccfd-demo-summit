@@ -205,7 +205,7 @@ $ oc new-app ruivieira/ccd-fuse:1.0-SNAPSHOT \
     -e BROKER_URL=odh-message-bus-kafka-brokers:9092 \
     -e KAFKA_TOPIC=ccd \
     -e KIE_SERVER_URL=http://ccd-service:8090 \
-    -e SELDON_URL=ccfd-http://seldon-model:5000 \
+    -e SELDON_URL=http://ccfd-seldon-model:5000 \
     -e CUSTOMER_NOTIFICATION_TOPIC=ccd-customer-outgoing \
     -e CUSTOMER_RESPONSE_TOPIC=ccd-customer-response
 ```
