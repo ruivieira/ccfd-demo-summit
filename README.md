@@ -11,9 +11,9 @@
       - [OpenDataHub](#opendatahub)
       - [Kafka](#kafka)
       - [Rook / Ceph](#rook--ceph)
-      - [Route](#route)
+        - [Route](#route)
       - [Fraud detection model](#fraud-detection-model)
-- [Upload data to Rook-Ceph](#upload-data-to-rook-ceph)
+      - [Upload data to Rook-Ceph](#upload-data-to-rook-ceph)
       - [Kie server](#kie-server)
         - [Execution server](#execution-server)
           - [Execution server optional configuration](#execution-server-optional-configuration)
@@ -250,7 +250,7 @@ available in this repo in `deploy/ceph/s3-secretceph.yml`.
 $ oc create -n ccfd -f deploy/ceph/s3-secretceph.yaml
 ```
 
-#### Route
+##### Route
 
 From the Openshift console, create a route to the rook service, `rook-ceph-rgw-my-store`, in the `rook-ceph` namespace to expose the endpoint. This endpoint url will be used to access the S3 interface from the example notebooks.
 
@@ -290,7 +290,7 @@ prometheus.io/path: /prometheus
 prometheus.io/scrape: 'true'
 ```
 
-# Upload data to Rook-Ceph
+#### Upload data to Rook-Ceph
 
 Make sure to decode the key and secret copied from the rook installation by using the following commands:
 
@@ -405,7 +405,7 @@ To deploy a router with listens to the topic `KAFKA_TOPIC` from Kafka's broker `
 ```shell
 $ oc new-app ruivieira/ccd-fuse:1.0-SNAPSHOT \
     -e BROKER_URL=odh-message-bus-kafka-brokers:9092 \
-    -e KAFKA_TOPIC=ccd \
+    -e KAFKA_TOPIC=odh-demo \
     -e KIE_SERVER_URL=http://ccd-service:8090 \
     -e SELDON_URL=http://ccfd-seldon-model:5000 \
     -e CUSTOMER_NOTIFICATION_TOPIC=ccd-customer-outgoing \
@@ -426,14 +426,29 @@ By default, the router will request a prediction to the endpoint `<SELDON_URL>/p
 
 #### Kafka producer
 
-To start the Kafka producer (which simulates the transaction events) run:
+The Kafka Producer needs specific parameters to read from S3 interface and call the model's REST prediction endpoint.
+Edit `deploy/kafka/ProducerDeployment.yaml` in this repository. Edit the file to specify namespace and your `rook-ceph` URL, your bucket name (this need to point to the location of the `creditcard.csv` file in the `rook-ceph` data store).
 
-```shell
-$ oc new-app ruivieira/ccfd-kafka-producer \
-    -e BROKER_URL=odh-message-bus-kafka-brokers:9092 \
-    -e KAFKA_TOPIC=ccd
+```yaml
+- name: NAMESPACE
+  description: The OpenShift project in use
+  value: <PROJECT> # e.g. ccfd
+
+- name: s3endpoint
+  value: "<ROOK_CEPH_URL>:443"
+
+- name: s3bucket
+  value: "ccdata"
+
+- name: filename
+  value: "OPEN/uploaded/creditcard.csv"
 ```
 
+Create the producer pod with:
+
+```shell
+$ oc process -f deploy/kafka/ProducerDeployment.yaml | oc apply -f -
+```
 
 ## Description
 
