@@ -407,9 +407,10 @@ $ oc new-app ruivieira/ccd-fuse:1.0-SNAPSHOT \
     -e BROKER_URL=odh-message-bus-kafka-brokers:9092 \
     -e KAFKA_TOPIC=odh-demo \
     -e KIE_SERVER_URL=http://ccd-service:8090 \
-    -e SELDON_URL=http://ccfd-seldon-model:5000 \
+    -e SELDON_URL=http://modelfull-modelfull:8000 \
     -e CUSTOMER_NOTIFICATION_TOPIC=ccd-customer-outgoing \
-    -e CUSTOMER_RESPONSE_TOPIC=ccd-customer-response
+    -e CUSTOMER_RESPONSE_TOPIC=ccd-customer-response \
+    -e SELDON_ENDPOINT=api/v0.1/predictions
 ```
 
 Also optionally, a Seldon token can be provided:
@@ -418,10 +419,10 @@ Also optionally, a Seldon token can be provided:
 -e SELDON_TOKEN=<SELDON_TOKEN>
 ```
 
-By default, the router will request a prediction to the endpoint `<SELDON_URL>/predict`. If however, your Seldon deployment uses another prediction endpoint, you can specify it by adding the `SELDON_ENDPOINT` enviroment variable above, for instance:
+By default, the router will request a prediction to the endpoint `<SELDON_URL>/api/v0.1/predictions`. If however, your Seldon deployment uses another prediction endpoint, you can specify it by adding the `SELDON_ENDPOINT` enviroment variable above, for instance:
 
 ```shell
--e SELDON_ENDPOINT=api/v0.1/predictions
+-e SELDON_ENDPOINT=predict
 ```
 
 #### Kafka producer
