@@ -20,6 +20,7 @@
       - [Notification service](#notification-service)
       - [Camel router](#camel-router)
       - [Kafka producer](#kafka-producer)
+      - [Prometheus / Grafana](#prometheus--grafana)
   - [Description](#description)
     - [Business processes](#business-processes)
   - [Footnotes](#footnotes)
@@ -451,30 +452,52 @@ Create the producer pod with:
 $ oc process -f deploy/kafka/ProducerDeployment.yaml | oc apply -f -
 ```
 
+#### Prometheus / Grafana
+
+From the Openshift portal click on the Prometheus route and explore some of the metrics.
+To launch Grafana dashboard click on the Grafana route.
+Use the [Grafana Boards](deploy/grafana/) and upload them to the dashboard.
+The following is a list of the boards:
+
+- [Kafka](deploy/grafana/Kafka.json)
+- [Seldon Model](deploy/grafana/ModelPrediction.json)
+- [Seldon Core](deploy/grafana/SeldonCore.json)
+- [Spark Metrics](deploy/grafana/SparkMetrics.json)
+
+The additional Prometheus metrics exposed by the different components are:
+
+- `ccd-fuse`:
+  - `transaction.incoming`, total number of incoming transactions
+  - `transaction.outgoing (type=standard)`, total outgoing transactions to the "standard" business process
+  - `transaction.outgoing (type=fraud)`, total outgoing transactions to the "fraud" business process
+  - `notifications.outgoing`, the number of customers notified (via SMS, email, etc) about a potentially fraudulent transaction
+  - `notifications.incoming`:
+    - `notifications.incoming(response=approved)`, number of customers which approved the transaction
+    - `notifications.incoming(response=non_approved)`, number of customers which did not approved the transaction
+
 ## Description
 
 ### Business processes
 
-![](docs/process-fraud.png)
+![Fraudulent transaction business process diagram](docs/process-fraud.png)
 
 The Business Process (BP) corresponding to a potential fraudulent transaction consists of the following flow:
 
-* The process is instantiated with the transaction's data
-* The `CustomerNotification` node sends a message to the `<CUSTOMER-OUTGOING>` topic with the customer's `id` and the transaction's `id`
-* At this point, either one of the two branches will be active:
-  * If no customer response is receive, after a certain specified time, a timer will trigger the creation of a User Task, assigned to a fraud investigator.
-  * If (before the timer expires) a response sent, the process is notified via a signal, containing the customer's response as the payload (either `true`, the customer made the transation or `false`, they did not). From here two additional branches:
-    * If the customer acknowledges the transaction, it is automatically approved
-    * If not, the transaction is cancelled
+- The process is instantiated with the transaction's data
+- The `CustomerNotification` node sends a message to the `<CUSTOMER-OUTGOING>` topic with the customer's `id` and the transaction's `id`
+- At this point, either one of the two branches will be active:
+  - If no customer response is receive, after a certain specified time, a timer will trigger the creation of a User Task, assigned to a fraud investigator.
+  - If (before the timer expires) a response sent, the process is notified via a signal, containing the customer's response as the payload (either `true`, the customer made the transation or `false`, they did not). From here two additional branches:
+    - If the customer acknowledges the transaction, it is automatically approved.
+    - If not, the transaction is cancelled.
 
 The customer notification/response works by:
 
-* Sending a message with the customer and transaction id to `<CUSTOMER-OUTGOING>` topic
-* This message is picked by the [notification service](#notification-service), which will send an approriate notification (email, SMS, *etc*) 
-* Customer response is sent to the `<CUSTOMER-RESPONSE>` topic, which is picked by the Camel router, which in turn sends it to the appropriate container, using a KIE server REST endpoint, as a signal containing the customer response
+- Sending a message with the customer and transaction id to `<CUSTOMER-OUTGOING>` topic
+- This message is picked by the [notification service](#notification-service), which will send an approriate notification (email, SMS, *etc*) 
+- Customer response is sent to the `<CUSTOMER-RESPONSE>` topic, which is picked by the Camel router, which in turn sends it to the appropriate container, using a KIE server REST endpoint, as a signal containing the customer response
 
 ## Footnotes
 
 [^0]: Note that this step requires `cluster-admin` permissions.
 [^1]: In case you need cluster admin privileges to deploy Strimzi, in which case (in a development setup)  you can run `oc adm policy add-cluster-role-to-user cluster-admin system:serviceaccount:default:strimzi-cluster-operator`.
-[^2]: You might need to add the appropriate server to Maven's `settings.xml` as per 
