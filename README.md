@@ -464,16 +464,15 @@ The following is a list of the boards:
 - [Seldon Core](deploy/grafana/SeldonCore.json)
 - [Spark Metrics](deploy/grafana/SparkMetrics.json)
 
-The additional Prometheus metrics exposed by the different components are:
+Additional Prometheus metrics are exposed by the router at `ccd-fuse:8091/prometheus`, namely:
 
-- `ccd-fuse`:
-  - `transaction.incoming`, total number of incoming transactions
-  - `transaction.outgoing (type=standard)`, total outgoing transactions to the "standard" business process
-  - `transaction.outgoing (type=fraud)`, total outgoing transactions to the "fraud" business process
-  - `notifications.outgoing`, the number of customers notified (via SMS, email, etc) about a potentially fraudulent transaction
-  - `notifications.incoming`:
-    - `notifications.incoming(response=approved)`, number of customers which approved the transaction
-    - `notifications.incoming(response=non_approved)`, number of customers which did not approved the transaction
+- `transaction.incoming`, total number of incoming transactions
+- `transaction.outgoing (type=standard)`, total outgoing transactions to the "standard" business process
+- `transaction.outgoing (type=fraud)`, total outgoing transactions to the "fraud" business process
+- `notifications.outgoing`, the number of customers notified (via SMS, email, etc) about a potentially fraudulent transaction
+- `notifications.incoming`:
+  - `notifications.incoming(response=approved)`, number of customers which approved the transaction
+  - `notifications.incoming(response=non_approved)`, number of customers which did not approved the transaction
 
 ## Description
 
