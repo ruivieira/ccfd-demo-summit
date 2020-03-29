@@ -25,6 +25,7 @@
     - [Events](#events)
       - [Incoming transactions](#incoming-transactions)
       - [Notifications](#notifications)
+      - [jBPM prediction service](#jbpm-prediction-service)
     - [Business processes](#business-processes)
   - [Footnotes](#footnotes)
 
@@ -508,6 +509,18 @@ The messages in the `ccd-customer-outgoing` topic trigger a notification service
 In the case where the customer replies **(5)**/**(6)**, the notification service will publish the customer's response to the `ccd-customer-response` topic.
 
 This response message will be picked up by the router **(7)**, which will then be redirected in order to signal the appropriate business process within the KIE server that the customer replied along with the response **(8)**.
+
+#### jBPM prediction service
+
+![Event sequence 3](docs/images/events-3.final.png)
+
+If the transaction was flagged as potentially fraudulent, the customer did not acknowleged it after a certain pre-defined period, an insvestigation branch of the business process will be triggered.
+A User Task will be created and use the jBPM's prediction service API to request a outcome prediction from Seldon using REST **(2)**.
+
+The prediction result will then be parsed by the prediction service and if the prediction confidence is:
+
+- Above the defined threshold, automatically close the User Task, assigning the outcome returned by the ML model
+- Below the defined threshold, set the prediction outcome to the most likely result, but do not close the User Task
 
 ### Business processes
 
