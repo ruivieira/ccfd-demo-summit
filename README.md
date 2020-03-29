@@ -22,6 +22,9 @@
       - [Kafka producer](#kafka-producer)
       - [Prometheus / Grafana](#prometheus--grafana)
   - [Description](#description)
+    - [Events](#events)
+      - [Incoming transactions](#incoming-transactions)
+      - [Notifications](#notifications)
     - [Business processes](#business-processes)
   - [Footnotes](#footnotes)
 
@@ -475,6 +478,36 @@ Additional Prometheus metrics are exposed by the router at `ccd-fuse:8091/promet
   - `notifications.incoming(response=non_approved)`, number of customers which did not approved the transaction
 
 ## Description
+
+### Events
+
+#### Incoming transactions
+
+![Event sequence 1](docs/images/events-1.final.png)
+
+The [Kafka producer](#kafka-producer) sends transaction data (`TX`) to the `odh-demo` topic **(1)**.
+The transaction data is based on the Kaggle Credit Card Fraud dataset.
+The Camel-based router reads the `odh-demo` topic for incoming transactions. Once it gets a transaction, it will extract the features needed for the model being served by Seldon. It will then issue a prediction request, via REST to the Seldon server **(2)**. This is done using an HTTP POST request with the transaction features as the payload.
+The Seldon server will return a prediction probability (`PR`) on whether this is potentially a fraudulent transaction or not **(3)**.
+
+The router will then send the data to the KIE server **(4)**. The router will instantiate a standard or fraudulent transaction business process, depending on the value returned by Seldon.
+
+#### Notifications
+
+![Event sequence 2](docs/images/events-2.final.png)
+
+When a transaction is classified as potentially fraudulent, it is sent to the KIE server, creating a "fraud" business process **(1)**.
+
+The business process then sends a message to the Kafka topic `ccd-customer-outgoing` with the customer id, transaction details and process id **(2)**. The business process will then wait for either, whichever happens first:
+
+- A response from the client (approving or not approving the transaction)
+- A pre-defined timer runs out
+
+The messages in the `ccd-customer-outgoing` topic trigger a notification service **(3)**. This service can be extended to inquire the customer in any preferred way (SMS, email, *etc.*), but for the purposes of this demo, we randomly generate a reply (or no reply) from the customer **(4)**.
+
+In the case where the customer replies **(5)**/**(6)**, the notification service will publish the customer's response to the `ccd-customer-response` topic.
+
+This response message will be picked up by the router **(7)**, which will then be redirected in order to signal the appropriate business process within the KIE server that the customer replied along with the response **(8)**.
 
 ### Business processes
 
