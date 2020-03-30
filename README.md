@@ -531,7 +531,11 @@ The Business Process (BP) corresponding to a potential fraudulent transaction co
 - The process is instantiated with the transaction's data
 - The `CustomerNotification` node sends a message to the `<CUSTOMER-OUTGOING>` topic with the customer's `id` and the transaction's `id`
 - At this point, either one of the two branches will be active:
-  - If no customer response is receive, after a certain specified time, a timer will trigger the creation of a User Task, assigned to a fraud investigator.
+  - If no customer response is received, after a certain specified time, a timer will trigger this branch.
+    - A DMN model is used where the outcome is to either initiate an investigation or accept the transaction.
+    - For demonstration purposes, a simple rule is evaluated where:
+      - If the fraud probability is below a certain threshold, and the transaction amount is sufficiently small, it is accepted.
+      - If the transaction amount is large or the probability is above a certain threshold, the BP proceeds with the creation of a User Task, assigned to a fraud investigator.
   - If (before the timer expires) a response sent, the process is notified via a signal, containing the customer's response as the payload (either `true`, the customer made the transation or `false`, they did not). From here two additional branches:
     - If the customer acknowledges the transaction, it is automatically approved.
     - If not, the transaction is cancelled.
