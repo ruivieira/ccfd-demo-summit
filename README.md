@@ -15,6 +15,7 @@
       - [Fraud detection model](#fraud-detection-model)
       - [Upload data to Rook-Ceph](#upload-data-to-rook-ceph)
       - [Kie server](#kie-server)
+        - [Seldon model for the prediction service](#seldon-model-for-the-prediction-service)
         - [Execution server](#execution-server)
           - [Execution server optional configuration](#execution-server-optional-configuration)
       - [Notification service](#notification-service)
@@ -339,13 +340,21 @@ $ aws s3 ls s3://ccdata/OPEN/uploaded/ --endpoint-url <ROOK_CEPH_URL>
 
 #### Kie server
 
+##### Seldon model for the prediction service
+
+In order to use jBPM's prediction service from User Tasks, a second Seldon model must be deployed using
+
+```shell
+oc new-app ruivieira/ccfd-seldon-usertask-model
+```
+
 ##### Execution server
 
 To deploy the KIE server, the container image `ruivieira/ccd-service` can be used (located [here](https://hub.docker.com/repository/docker/ruivieira/ccd-service)),  deploying it with:
 
 ```shell
 $ oc new-app ruivieira/ccd-service:1.0-SNAPSHOT \
-    -e SELDON_URL=ccfd-seldon-model:5000 \
+    -e SELDON_URL=http://ccfd-seldon-usertask-model:5000 \
     -e NEXUS_URL=http://nexus:8081 \
     -e CUSTOMER_NOTIFICATION_TOPIC=ccd-customer-outgoing \
     -e BROKER_URL=odh-message-bus-kafka-brokers:9092
