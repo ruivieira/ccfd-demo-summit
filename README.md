@@ -412,8 +412,8 @@ $ oc new-app ruivieira/ccfd-notification-service:1.0-SNAPSHOT \
 
 #### Camel router
 
-The Camel router is responsible consume messages arriving in specific topics, requesting a prediction to the Seldon model, and then triggering different REST endpoints according to that prediction.
-The route is selected depending on whether a transaction is predicted as fraudulent or not. Depending on the model's prediction a specific business process will be triggered on the KIE server.
+The [Apache Camel](https://camel.apache.org/) router is responsible consume messages arriving in specific topics, requesting a prediction to the Seldon model, and then triggering different REST endpoints according to that prediction.
+The route is selected by executing configurable [Drools](https://www.drools.org/) rules using the model's prediction as inout. Depending rules outcome a specific business process will be triggered on the KIE server.
 To deploy a router with listens to the topic `KAFKA_TOPIC` from Kafka's broker `BROKER_URL` and starts a process instance on the KIE server at `KIE_SERVER_URL`, we can use the built image `ruimvieira/ccd-fuse` (available [here](https://hub.docker.com/repository/docker/ruivieira/ccd-fuse)):
 
 ```shell
