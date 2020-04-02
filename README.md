@@ -477,7 +477,30 @@ The following is a list of the boards:
 - [Seldon Core](deploy/grafana/SeldonCore.json)
 - [Spark Metrics](deploy/grafana/SparkMetrics.json)
 
-Additional Prometheus metrics are exposed by the router at `ccd-fuse:8091/prometheus`, namely:
+Additional Prometheus metrics are exposed by the router and the KIE server.
+To enable them, edit the pod's annotation to in `ccd-fuse` and `ccd-service`, respectively, to include:
+
+```yaml
+# ccd-fuse
+prometheus.io/scrape: 'true'
+prometheus.io/path: '/prometheus'
+prometheus.io/port: '8091'
+```
+
+```yaml
+# ccd-service
+prometheus.io/scrape: 'true'
+prometheus.io/path: '/rest/metrics'
+prometheus.io/port: '8090'
+```
+
+You must also expose, if you haven't done so, the `ccd-service` with:
+
+```shell
+$ oc expose svc/ccd-service
+```
+
+`ccd-fuse:8091/prometheus` provides:
 
 - `transaction.incoming`, total number of incoming transactions
 - `transaction.outgoing (type=standard)`, total outgoing transactions to the "standard" business process
@@ -486,6 +509,13 @@ Additional Prometheus metrics are exposed by the router at `ccd-fuse:8091/promet
 - `notifications.incoming`:
   - `notifications.incoming(response=approved)`, number of customers which approved the transaction
   - `notifications.incoming(response=non_approved)`, number of customers which did not approved the transaction
+
+And `ccd-service:8090/rest/metrics` provides:
+
+- `fraud_investigation_amount`, histogram amount for a transaction that will be investigated as fraud
+- `fraud_approved_low_amount`, histogram of transaction amounts not acknowledged by customer, but approved (mainly due to low amount)
+- `fraud_approved_amount`, histogram amount for a transaction that was approved by the customer
+- `fraud_rejected_amount`, histogram amount for a transaction that was rejected by the customer
 
 ## Description
 
