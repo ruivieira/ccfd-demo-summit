@@ -40,7 +40,7 @@ To deploy all the components in OpenShift, the simplest way is to login using `o
 $ oc login -u <USER>
 ```
 
-Next you can create a project for this demo, such as
+Next you can create a project for this demo. We will use `ccfd` (Credit Card Fraud Detection).
 
 ```shell
 $ oc new-project ccfd
@@ -97,13 +97,13 @@ and edit the following values:
 ```yaml
 # Seldon Deployment
 seldon:
-odh_deploy: true
+  odh_deploy: true
 
 kafka:
-odh_deploy: true
-kafka_cluster_name: odh-message-bus
-kafka_broker_replicas: 3
-kafka_zookeeper_replicas: 3
+  odh_deploy: true
+  kafka_cluster_name: odh-message-bus
+  kafka_broker_replicas: 3
+  kafka_zookeeper_replicas: 3
 ```
 
 Kafka installation requires special setup, the following steps are to configure Kafka. Add your username to the `kafka_admins` list,
@@ -112,7 +112,7 @@ by editing `deploy/kafka/vars/vars.yaml`:
 ```yaml
 kafka_admins:
 - admin
-- system:serviceaccount:{{ NAMESPACE }}:opendatahub-operator
+- system:serviceaccount:<PROJECT>:opendatahub-operator
 - <INSERT USERNAME>
 ```
 
@@ -121,7 +121,9 @@ You can now deploy Kafka using:
 ```shell
 $ cd deploy/kafka/
 $ pipenv install
-$ pipenv run ansible-playbook deploy_kafka_operator.yaml -e kubeconfig=$HOME/.kube/config -e NAMESPACE=<namespace>
+$ pipenv run ansible-playbook deploy_kafka_operator.yaml \
+  -e kubeconfig=$HOME/.kube/config \
+  -e NAMESPACE=<PROJECT>
 ```
 
 Deploy the ODH custom resource based on the sample template
@@ -146,9 +148,9 @@ Edit `operator.yaml` and set the environment variables for `FLEXVOLUME_DIR_PATH`
 
 ```yaml
 name: FLEXVOLUME_DIR_PATH
-value: "/etc/kubernetes/kubelet-plugins/volume/exec"
+  value: "/etc/kubernetes/kubelet-plugins/volume/exec"
 name: ROOK_HOSTPATH_REQUIRES_PRIVILEGED
-value: "true"
+  value: "true"
 ```
 
 The following steps require cluster wide permissions. Configure the necessary security contexts , and deploy the rook operator, this will create a new namespace, `rook-ceph-system`, and deploy the pods in it.
@@ -174,7 +176,8 @@ rook-discover-lgfrx 1/1 Running 0 33m
 
 Once the operator is ready, you can create a Ceph cluster, and a Ceph object service.
 The toolbox service is also handy to deploy for checking the health of the Ceph cluster.
-This step takes a couple of minutes, please be patient.
+
+> This step takes a couple of minutes, please be patient.
 
 ```shell
 $ oc create -f cluster.yaml
@@ -200,12 +203,12 @@ Edit `object.yaml` and replace port `80` with `8080`:
 
 ```yaml
 gateway:
-# type of the gateway (s3)
-type: s3
-# A reference to the secret in the rook namespace where the ssl certificate is stored
-sslCertificateRef:
-# The port that RGW pods will listen on (http)
-port: 8080
+  # type of the gateway (s3)
+  type: s3
+  # A reference to the secret in the rook namespace where the ssl certificate is stored
+  sslCertificateRef:
+  # The port that RGW pods will listen on (http)
+  port: 8080
 ```
 
 And then run:
@@ -235,7 +238,7 @@ rook-ceph-rgw-my-store-d6946dcf-q8k69 1/1 Running 0 5m33s
 rook-ceph-tools-cb5655595-4g4b2 1/1 Running 0 8m46s
 ```
 
-Next, you will need to create a set of S3 credentials, the resulting credentials will be stored in a secret file under the rook-ceph namespace.
+Next, you will need to create a set of S3 credentials, the resulting credentials will be stored in a secret file under the `rook-ceph` namespace.
 There isn’t currently a way to cross-share secrets between OpenShift namespaces, so you will need to copy the secret to the namespace running Open Data Hub operator. To do so, run:
 
 ```shell
@@ -248,8 +251,8 @@ Next we are going to retrieve the secrets using
 $ oc get secrets -n rook-ceph rook-ceph-object-user-my-store-my-user -o json
 ```
 
-Create a secret in your deployment namespace that includes the secret and key for S3 interface. 
-Make sure to copy the accesskey and secretkey from the command output above and download the secret yaml file
+Create a secret in your deployment namespace that includes the secret and key for S3 interface.
+Make sure to copy the `accesskey` and `secretkey` from the command output above and download the secret yaml file
 available in this repo in `deploy/ceph/s3-secretceph.yml`.
 
 ```shell
@@ -313,7 +316,7 @@ $ aws configure
 ```
 
 Only enter key and secret, leave all other fields as default. Check if connection is working using the route
-[created previously](#route):
+[created previously](#route) (you can use `oc get route -n rook-ceph`):
 
 ```shell
 $ aws s3 ls --endpoint-url <ROOK_CEPH_URL>
