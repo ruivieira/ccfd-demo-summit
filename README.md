@@ -20,6 +20,7 @@
           - [Execution server optional configuration](#execution-server-optional-configuration)
       - [Notification service](#notification-service)
       - [Camel router](#camel-router)
+        - [Camel router optional configuration](#camel-router-optional-configuration)
       - [Kafka producer](#kafka-producer)
       - [Prometheus / Grafana](#prometheus--grafana)
   - [Description](#description)
@@ -353,43 +354,51 @@ oc new-app ruivieira/ccfd-seldon-usertask-model
 
 ##### Execution server
 
-To deploy the KIE server, the container image `ruivieira/ccd-service` can be used (located [here](https://hub.docker.com/repository/docker/ruivieira/ccd-service)),  deploying it with:
+To deploy the KIE server you can use the `deploy/ccd-service.yaml` on this repo and run:
 
 ```shell
-$ oc new-app ruivieira/ccd-service:1.0-SNAPSHOT \
-    -e SELDON_URL=http://ccfd-seldon-usertask-model:5000 \
-    -e NEXUS_URL=http://nexus:8081 \
-    -e CUSTOMER_NOTIFICATION_TOPIC=ccd-customer-outgoing \
-    -e BROKER_URL=odh-message-bus-kafka-brokers:9092
+$ oc create -f deploy/ccd-service.yaml -n ccfd
 ```
+
+The KIE server can be configured by editing the enviroment variables in that file, under the `env` key.
+Some configurable values are:
+
+- `SELDON_URL`, location the Seldon server providing fraudulent score prediction
+- `CUSTOMER_NOTIFICATION_TOPIC`, Kafka topic for outgoing customer notifications
+- `BROKER_URL`, Kafka broker location and port
 
 ###### Execution server optional configuration
 
-If the Seldon server requires an authentication token, this can be passed to the KIE server by adding the following environment variable:
+If the Seldon server requires an authentication token, this can be passed to the KIE server by adding the following environment variable to `deploy/ccd-service.yaml`:
 
-```shell
--e SELDON_TOKEN=<SELDON_TOKEN>
+```yaml
+- name: SELDON_TOKEN
+  value: <SELDON_TOKEN>
 ```
 
-By default, the KIE server will request a prediction to the endpoint `<SELDON_URL>/predict`. If however, your Seldon deployment uses another prediction endpoint, you can specify it by adding the `SELDON_ENDPOINT` enviroment variable above, for instance:
+By default, the KIE server will request a prediction to the endpoint `<SELDON_URL>/predict`. If however, your Seldon deployment uses another prediction endpoint, you can specify it by adding the `SELDON_ENDPOINT` enviroment variable, for instance:
 
-```shell
--e SELDON_ENDPOINT=api/v0.1/predictions
+```yaml
+- name: SELDON_ENDPOINT
+  value: 'api/v0.1/predictions'
 ```
 
 The HTTP connection parameters can also be configured, namely the _connection pool size_ and the connections _timeout_. The timeout value provided is treated as milliseconds. For instance:
 
-```shell
--e SELDON_TIMEOUT=5000 \ # five second timeout
--e SELDON_POOL_SIZE=5    # allows for 5 simulataneous HTTP connections
+```yaml
+- name: SELDON_TIMEOUT
+  value: '5000' # five second timeout
+- name: SELDON_POOL_SIZE
+  value: '5' # allows for 5 simulataneous HTTP connections
 ```
 
 The prediction service's _confidence threshold_, above which a prediction automatically assigns an output and
 closes the user task can be also provided. It is assumed to be a probability value between `0.0` and `1.0`.
 If not provided, the default value is `1.0`. To specify it use:
 
-```shell
--e CONFIDENCE_THRESHOLD=0.5 # as an example
+```yaml
+- name: CONFIDENCE_THRESHOLD
+  value: '0.5' # as an example
 ```
 
 If you want to interact with the KIE server's REST interface from outside OpenShift, you can expose its service with
@@ -409,8 +418,7 @@ If the customer replies (in both scenarios: they either made the transaction or 
 To deploy the notification service, we use the image `ruivieira/ccfd-notification-service` (available [here](https://hub.docker.com/repository/docker/ruivieira/ccfd-notification-service)), by running:
 
 ```shell
-$ oc new-app ruivieira/ccfd-notification-service:1.0-SNAPSHOT \
-    -e BROKER_URL=odh-message-bus-kafka-brokers:9092
+$ oc create -f notification-service.yaml -n ccfd
 ```
 
 #### Camel router
@@ -420,26 +428,34 @@ The route is selected by executing configurable [Drools](https://www.drools.org/
 To deploy a router with listens to the topic `KAFKA_TOPIC` from Kafka's broker `BROKER_URL` and starts a process instance on the KIE server at `KIE_SERVER_URL`, we can use the built image `ruimvieira/ccd-fuse` (available [here](https://hub.docker.com/repository/docker/ruivieira/ccd-fuse)):
 
 ```shell
-$ oc new-app ruivieira/ccd-fuse:1.0-SNAPSHOT \
-    -e BROKER_URL=odh-message-bus-kafka-brokers:9092 \
-    -e KAFKA_TOPIC=odh-demo \
-    -e KIE_SERVER_URL=http://ccd-service:8090 \
-    -e SELDON_URL=http://modelfull-modelfull:8000 \
-    -e CUSTOMER_NOTIFICATION_TOPIC=ccd-customer-outgoing \
-    -e CUSTOMER_RESPONSE_TOPIC=ccd-customer-response \
-    -e SELDON_ENDPOINT=api/v0.1/predictions
+$ oc create -f router.yaml -n ccfd
 ```
 
-Also optionally, a Seldon token can be provided:
+##### Camel router optional configuration
 
-```shell
--e SELDON_TOKEN=<SELDON_TOKEN>
+Router configuration can be performed by editing the `deploy/router.yaml` file.
+Some configurable values are:
+
+- `BROKER_URL`, Kafka broker location and port
+- `KAFKA_TOPIC`, Kafka topic for incoming transactions
+- `KIE_SERVER_URL`, KIE server location and port
+- `SELDON_URL`, Seldon server location and port for fraud score prediction
+- `CUSTOMER_NOTIFICATION_TOPIC`, Kafka topic for outgoing customer notifications
+- `CUSTOMER_RESPONSE_TOPIC`, Kafka topic for incoming customer responses
+- `SELDON_ENDPOINT`, custom Seldon REST prediction endpoint
+
+Also optionally, a Seldon token can be provided by editing the file:
+
+```yaml
+- name: SELDON_TOKEN
+  value: <SELDON_TOKEN>
 ```
 
 By default, the router will request a prediction to the endpoint `<SELDON_URL>/api/v0.1/predictions`. If however, your Seldon deployment uses another prediction endpoint, you can specify it by adding the `SELDON_ENDPOINT` enviroment variable above, for instance:
 
-```shell
--e SELDON_ENDPOINT=predict
+```yaml
+- name: SELDON_ENDPOINT
+  value: 'predict'
 ```
 
 #### Kafka producer
