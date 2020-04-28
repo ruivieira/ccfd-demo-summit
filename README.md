@@ -418,7 +418,7 @@ If the customer replies (in both scenarios: they either made the transaction or 
 To deploy the notification service, we use the image `ruivieira/ccfd-notification-service` (available [here](https://hub.docker.com/repository/docker/ruivieira/ccfd-notification-service)), by running:
 
 ```shell
-$ oc create -f notification-service.yaml -n ccfd
+$ oc create -f deploy/notification-service.yaml -n ccfd
 ```
 
 #### Camel router
@@ -428,7 +428,7 @@ The route is selected by executing configurable [Drools](https://www.drools.org/
 To deploy a router with listens to the topic `KAFKA_TOPIC` from Kafka's broker `BROKER_URL` and starts a process instance on the KIE server at `KIE_SERVER_URL`, we can use the built image `ruimvieira/ccd-fuse` (available [here](https://hub.docker.com/repository/docker/ruivieira/ccd-fuse)):
 
 ```shell
-$ oc create -f router.yaml -n ccfd
+$ oc create -f deploy/router.yaml -n ccfd
 ```
 
 ##### Camel router optional configuration
