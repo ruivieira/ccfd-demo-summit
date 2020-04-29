@@ -66,6 +66,8 @@ spec:
               value: api/v0.1/predictions
             - name: SELDON_URL
               value: 'http://modelfull-modelfull:8000'
+            - name: FRAUD_THRESHOLD
+              value: '0.5'
           resources: {}
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
